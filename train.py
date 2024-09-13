@@ -5,7 +5,7 @@ from MeshDataset import MeshDataset
 from loss import TotalVariation_3d, MaxProbExtractor, NPSCalculator
 import time
 from tqdm import tqdm
-from YoloV3.yolo_CAM import YOLO
+from YoloV3.yolov3_CAM import YOLO
 from data_loader_nr import MyDataset
 
 
@@ -81,13 +81,11 @@ class Patch:
                     shuffle=self.config.shuffle,
                     drop_last=self.config.drop_last,
                 )
-                # 初始化标志变量
-                flag = 0
                 # 使用tqdm显示进度条
                 tqdm_loader = tqdm(loader)
                 # 遍历数据加载器中的每个批次
-                for i, (index, file_name_BS, total_img, texture_img, contour) in enumerate(tqdm_loader):
-                    flag = flag + 1
+                for i, (index, file_name_batch_size, total_img, texture_img, contour) in enumerate(tqdm_loader):
+
                     # 清零梯度
                     optimizer.zero_grad()
                     # 调整图像维度顺序
@@ -104,29 +102,30 @@ class Patch:
                     # ------------------------------------------------------------------------------------#
                     # 初始化前景和背景注意力列表
                     heatmap_constrain_list = list()  # 前景注意力
-                    heatmap_bg_list = list()  # 背景注意力
+                    heatmap_background_list = list()  # 背景注意力
+                    heatmap_constrain = None
+                    heatmap_background = None
                     # 计算每个尺度的注意力图
-                    for kk in range(len(attention_list)):
-                        heatmap_constrain_tmp = attention_list[kk] * contour.permute(0, 3, 1, 2)
-                        heatmap_constrain_list.append(heatmap_constrain_tmp)
+                    for j in range(len(attention_list)):
+                        heatmap_constrain_temp = attention_list[j] * contour.permute(0, 3, 1, 2)
+                        heatmap_constrain_list.append(heatmap_constrain_temp)
 
-                        heatmap_bg_tmp = attention_list[kk] - heatmap_constrain_tmp
-                        heatmap_bg_list.append(heatmap_bg_tmp)
+                        heatmap_background_temp = attention_list[j] - heatmap_constrain_temp
+                        heatmap_background_list.append(heatmap_background_temp)
                         # 累加注意力图
-                        if kk == 0:
-                            heatmap_constrain = heatmap_constrain_tmp
-                            heatmap_bg = heatmap_bg_tmp
+                        if j == 0:
+                            heatmap_constrain = heatmap_constrain_temp
+                            heatmap_background = heatmap_background_temp
                         else:
-                            heatmap_constrain = heatmap_constrain + heatmap_constrain_tmp  # accumulate foreground attention
-                            heatmap_bg = heatmap_bg + heatmap_bg_tmp  # accumulate background attention
+                            heatmap_constrain = heatmap_constrain + heatmap_constrain_temp  # accumulate foreground attention
+                            heatmap_background = heatmap_background + heatmap_background_temp  # accumulate background attention
                     # 计算全局平均注意力值
                     heat_average = (torch.sum(heatmap_constrain, dim=[1, 2, 3]) /
-                                    torch.sum(heatmap_constrain != 0,
-                                              dim=[1, 2, 3]))
+                                    torch.sum(heatmap_constrain != 0, dim=[1, 2, 3]))
                     # 计算注意力损失
-                    heat_average_bg = (torch.sum(heatmap_bg, dim=[1, 2, 3]) /
-                                       torch.sum(heatmap_constrain == 0,
-                                                 dim=[1, 2, 3]))  # global average value of background attention
+                    heat_average_bg = (torch.sum(heatmap_background, dim=[1, 2, 3]) /
+                                       torch.sum(heatmap_constrain == 0, dim=[1, 2, 3]))
+                    # global average value of background attention
 
                     heat_loss = torch.mean(heat_average) * 5 - torch.mean(heat_average_bg)  # attention loss
                     tv_loss = total_variation(self.patch) * 2.5
@@ -164,8 +163,7 @@ class Patch:
 
                     dataset.set_mesh(mesh)
 
-                    del output, total_img, texture_img, contour, \
-                        nps, loss, tv_loss, attention_list
+                    del output, total_img, texture_img, contour, nps, loss, tv_loss, attention_list
                     torch.cuda.empty_cache()
 
             patch_save = self.patch.cpu().detach().clone()

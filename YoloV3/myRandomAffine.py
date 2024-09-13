@@ -13,8 +13,8 @@ import torchvision.transforms as transforms
 
 class myRandomAffine(torch.nn.Module):
 
-    def __init__(  # zy：添加translate的反向变化inv_translate
-            self, degrees, translate=None, inv_translate=None, scale=None, inv_scale=None, shear=None,
+    def __init__(  # zy：添加translate的反向变化inverse_translate
+            self, degrees, translate=None, inverse_translate=None, scale=None, inv_scale=None, shear=None,
             interpolation=InterpolationMode.NEAREST, fill=0,
             fillcolor=None, resample=None
     ):
@@ -24,7 +24,7 @@ class myRandomAffine(torch.nn.Module):
         参数:
             degrees (float 或 tuple): 旋转角度。
             translate (tuple, 可选): 平移距离，格式为 (x, y)。
-            inv_translate (tuple, 可选): translate的反向平移距离。zy添加
+            inverse_translate (tuple, 可选): translate的反向平移距离。zy添加
             scale (tuple, 可选): 缩放比例，格式为 (width, height)。
             inv_scale (tuple, 可选): scale的反向缩放比例。zy添加
             shear (float 或 tuple, 可选): 错切角度。
@@ -58,9 +58,9 @@ class myRandomAffine(torch.nn.Module):
         self.translate = translate
 
         # 添加反向平移的设置
-        if inv_translate is not None:
-            _check_sequence_input(inv_translate, "inv_translate", req_sizes=(2,))
-        self.inv_translate = inv_translate
+        if inverse_translate is not None:
+            _check_sequence_input(inverse_translate, "inverse_translate", req_sizes=(2,))
+        self.inverse_translate = inverse_translate
 
         # 设置缩放
         if scale is not None:
@@ -99,7 +99,7 @@ class myRandomAffine(torch.nn.Module):
     def get_params(
             degrees: List[float],
             translate: Optional[List[float]],
-            inv_translate: Optional[List[float]],  # zy添加
+            inverse_translate: Optional[List[float]],  # zy添加
             scale_ranges: Optional[List[float]],
             inv_scale_ranges: Optional[List[float]],  # zy添加
             shears: Optional[List[float]],
@@ -111,7 +111,7 @@ class myRandomAffine(torch.nn.Module):
         参数:
             degrees (List[float]): 角度范围。
             translate (Optional[List[float]]): 平移范围，格式为 [x, y]。
-            inv_translate (Optional[List[float]]): inv_translate的反向平移范围。zy添加
+            inverse_translate (Optional[List[float]]): inverse_translate的反向平移范围。zy添加
             scale_ranges (Optional[List[float]]): 缩放范围，格式为 [min, max]。
             inv_scale_ranges (Optional[List[float]]): inv_scale_ranges的反向缩放范围。zy添加
             shears (Optional[List[float]]): 错切范围，格式为 [x, y]。
@@ -135,9 +135,9 @@ class myRandomAffine(torch.nn.Module):
             ty = int(round(torch.empty(1).uniform_(-max_dy, max_dy).item()))
             # 平移量
             translations = (tx, ty)
-        elif inv_translate is not None:  # zy添加反变化
+        elif inverse_translate is not None:  # zy添加反变化
             # 如果提供了反向平移量，则直接使用
-            translations = inv_translate
+            translations = inverse_translate
         else:
             # 默认情况下，平移量为0
             translations = (0, 0)
@@ -185,7 +185,7 @@ class myRandomAffine(torch.nn.Module):
         img_size = TTF._get_image_size(img)
 
         # 获取仿射变换的参数
-        ret = self.get_params(self.degrees, self.translate, self.inv_translate, self.scale, self.inv_scale,
+        ret = self.get_params(self.degrees, self.translate, self.inverse_translate, self.scale, self.inv_scale,
                               self.shear, img_size)
         # zy添加: 将返回的元组拆分为单独的变量
         angle, translations, scale, shear = ret

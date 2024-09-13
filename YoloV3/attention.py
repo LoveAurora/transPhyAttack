@@ -103,48 +103,60 @@ class Attention(object):
 
     def __call__(self, inputs, index=0, retain_graph=True):
 
-        img_ori = inputs['image']
+        img_origin = inputs['image']
+        # 创建一个随机水平翻转对象Hflip
         Hflip = transforms.RandomHorizontalFlip(p=1)
+        # randomAffine  创建随机仿射变换对象，返回仿射变换后的图像，以及平移量和缩放系数。
+        # img_randomAffine  为经过randomAffine变换后的图像。
+        # inverse_randomAffine  创建一个逆向的随机仿射变换对象，用于撤销randomAffine变换。
+        # translations 存储 randomAffine 变换后的图像相对于原始图像的平移量。
+        # scale_factor 存储 randomAffine_scale 变换后的图像相对于randomAffine 变换后的图像的缩放因子。
+        # img_randomAffineScale  为经过randomAffine_scale变换后的图像。
+        # scale_randomAffine  创建随机缩放变换对象，返回缩放变换后的图像，以及平移量和缩放系数。
+        # inverse_randomScale  创建一个逆向的随机缩放变换对象，用于撤销randomAffine_scale变换。
 
         '''第一个复合变换：平移->缩放'''
         # 平移
         randomAffine1 = myRandomAffine(degrees=(0, 0), translate=(0.1, 0.1))
-        img_randomAffine1, translations_b1, _ = randomAffine1(img_ori.clone())
+        img_randomAffine1, translations1, _ = randomAffine1(img_origin.clone())
         # 逆平移
-        inv_randomAffine_b1 = myRandomAffine(degrees=(0, 0), inv_translate=(-translations_b1[0], -translations_b1[1]))
+        inverse_randomAffine1 = myRandomAffine(degrees=(0, 0), inverse_translate=(-translations1[0], -translations1[1]))
+
         # 缩放
-        randomAffine_scale1 = myRandomAffine(degrees=(0, 0), scale=(0.8, 1.2), interpolation=InterpolationMode.BILINEAR)
-        img_randomAffineScale1, _, scale_factor_b1 = randomAffine_scale1(img_randomAffine1)
+        scale_randomAffine1 = myRandomAffine(degrees=(0, 0), scale=(0.8, 1.2), interpolation=InterpolationMode.BILINEAR)
+        img_randomAffineScale1, _, scale_factor1 = scale_randomAffine1(img_randomAffine1)
         # 逆缩放
-        inv_randomScale_b1 = myRandomAffine(degrees=(0, 0), scale=(1 / scale_factor_b1, 1 / scale_factor_b1),
+        inverse_randomScale1 = myRandomAffine(degrees=(0, 0), scale=(1 / scale_factor1, 1 / scale_factor1),
                                             interpolation=InterpolationMode.BILINEAR)
 
         '''第二个：水平翻转->平移->缩放'''
         # 水平翻转
-        img_flip2 = Hflip(img_ori.clone())
+        img_flip2 = Hflip(img_origin.clone())
         # 平移
         randomAffine2 = myRandomAffine(degrees=(0, 0), translate=(0.1, 0.1))
-        img_randomAffine2, translations_b2, _ = randomAffine2(img_flip2)
+        img_randomAffine2, translations2, _ = randomAffine2(img_flip2)
         # 逆平移
-        inv_randomAffine_b2 = myRandomAffine(degrees=(0, 0), inv_translate=(-translations_b2[0], -translations_b2[1]))
+        inverse_randomAffine2 = myRandomAffine(degrees=(0, 0), inverse_translate=(-translations2[0], -translations2[1]))
+
         # 缩放
-        randomAffine_scale2 = myRandomAffine(degrees=(0, 0), scale=(0.8, 1.2), interpolation=InterpolationMode.BILINEAR)
-        img_randomAffineScale2, _, scale_factor_b2 = randomAffine_scale2(img_randomAffine2)
+        scale_randomAffine2 = myRandomAffine(degrees=(0, 0), scale=(0.8, 1.2), interpolation=InterpolationMode.BILINEAR)
+        img_randomAffineScale2, _, scale_factor2 = scale_randomAffine2(img_randomAffine2)
         # 逆缩放
-        inv_randomScale_b2 = myRandomAffine(degrees=(0, 0), scale=(1 / scale_factor_b2, 1 / scale_factor_b2),
+        inverse_randomScale2 = myRandomAffine(degrees=(0, 0), scale=(1 / scale_factor2, 1 / scale_factor2),
                                             interpolation=InterpolationMode.BILINEAR)
 
         '''第三个：平移->缩放'''
         # 平移
         randomAffine3 = myRandomAffine(degrees=(0, 0), translate=(0.1, 0.1))
-        img_randomAffine3, translations_b3, _ = randomAffine3(img_ori.clone())
+        img_randomAffine3, translations3, _ = randomAffine3(img_origin.clone())
         # 逆平移
-        inv_randomAffine_b3 = myRandomAffine(degrees=(0, 0), inv_translate=(-translations_b3[0], -translations_b3[1]))
+        inverse_randomAffine3 = myRandomAffine(degrees=(0, 0), inverse_translate=(-translations3[0], -translations3[1]))
+
         # 缩放
-        randomAffine_scale3 = myRandomAffine(degrees=(0, 0), scale=(0.8, 1.2), interpolation=InterpolationMode.BILINEAR)
-        img_randomAffineScale3, _, scale_factor_b3 = randomAffine_scale3(img_randomAffine3)
+        scale_randomAffine3 = myRandomAffine(degrees=(0, 0), scale=(0.8, 1.2), interpolation=InterpolationMode.BILINEAR)
+        img_randomAffineScale3, _, scale_factor3 = scale_randomAffine3(img_randomAffine3)
         # 逆缩放
-        inv_randomScale_b3 = myRandomAffine(degrees=(0, 0), scale=(1 / scale_factor_b3, 1 / scale_factor_b3),
+        inverse_randomScale3 = myRandomAffine(degrees=(0, 0), scale=(1 / scale_factor3, 1 / scale_factor3),
                                             interpolation=InterpolationMode.BILINEAR)
 
         # 将变换后的图像沿批次维度拼接
@@ -156,11 +168,11 @@ class Attention(object):
         for k in range(3):
             output_list.append(self.yolo_decodes[k](outputs[k]))
         # 将解码后的输出沿第二维度拼接
-        output = torch.cat(output_list, 1)  # BS×nx6 (xywh，obj_conf, cls_conf)
+        output = torch.cat(output_list, 1)  # batch_size×nx6 (xywh，obj_conf, cls_conf)
         # 通过对象置信度和类别置信度来计算分数
-        bb = output[:, :, 4] + output[:, :, 5]
+        obj_cls_conf = output[:, :, 4] + output[:, :, 5]
         # 获取每个批次的最大分数
-        scores = torch.max(bb, dim=1).values
+        scores = torch.max(obj_cls_conf, dim=1).values
         # 为分数创建一个one-hot张量
         one_hot_output = torch.FloatTensor(scores.size()[-1]).zero_().cuda()
         one_hot_output[:] = 1
@@ -170,69 +182,82 @@ class Attention(object):
         scores.backward(gradient=one_hot_output, retain_graph=retain_graph)
 
         '''-------------------multi-scale attention calculating----------------------'''
-        BS = img_ori.shape[0]
+        # 获取原始图像的批量大小
+        batch_size = img_origin.shape[0]
+
+        # 初始化 Grad-CAM 缩放列表、原始 CAM 列表和归一化 CAM 列表
         grad_cam_resize_list = list()
-        cam_ori_list = list()
-        cam_ori_norm_list = list()
-        for kk in range(len(self.gradient)):
+        cam_origin_list = list()
+        cam_origin_normalization_list = list()
+
+        for i in range(len(self.gradient)):
+            # 确保特征图的数量与梯度的数量匹配
             assert len(self.feature) == len(self.gradient) or len(self.feature) == 2 * len(self.gradient) \
                    or len(self.feature) == 3 * len(self.gradient) or len(self.feature) == 4 * len(
                 self.gradient), 'Error! '
-            # cam_weight = torch.mean(self.gradient[len(self.gradient) - kk - 1].clone().detach(), dim=[2, 3],
+            # cam_weight = torch.mean(self.gradient[len(self.gradient) - i - 1].clone().detach(), dim=[2, 3],
             #                        keepdim=True) - torch.tensor([1]).cuda()
+            # 获取设备信息
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            cam_weight = torch.mean(self.gradient[len(self.gradient) - kk - 1].clone().detach(), dim=[2, 3],
+            # 计算权重
+            cam_weight = torch.mean(self.gradient[len(self.gradient) - i - 1].clone().detach(), dim=[2, 3],
                                     keepdim=True).to(device) - torch.tensor([1], device=device)
-            aa = torch.sum((cam_weight * self.feature[kk]), dim=1)
-            bb = torch.relu(aa).unsqueeze(1)
-            bb_min = torch.min(torch.min(bb.clone().detach(), dim=3).values, dim=2).values
-            bb_min = bb_min.unsqueeze(-1)
-            bb_min = bb_min.expand(-1, -1, bb.size(2))
-            bb_min = bb_min.unsqueeze(-1)
-            bb_min = bb_min.expand(-1, -1, -1, bb.size(3))
-            bb_max = torch.max(torch.max(bb.clone().detach(), dim=3).values, dim=2).values
-            bb_max = bb_max.unsqueeze(-1)
-            bb_max = bb_max.expand(-1, -1, bb.size(2))
-            bb_max = bb_max.unsqueeze(-1)
-            bb_max = bb_max.expand(-1, -1, -1, bb.size(3))
-            grad_cam = (bb - bb_min) / (bb_max - bb_min)
+            # 计算原始 CAM
+            origin_cam = torch.sum((cam_weight * self.feature[i]), dim=1)
+            # 应用 ReLU 激活函数，并扩展维度生成正激活特征图
+            relu_activated_map = torch.relu(origin_cam).unsqueeze(1)
+            # 获取最小值
+            relu_activated_map_min = torch.min(torch.min(relu_activated_map.clone().detach(), dim=3).values, dim=2).values
+            relu_activated_map_min = relu_activated_map_min.unsqueeze(-1)
+            relu_activated_map_min = relu_activated_map_min.expand(-1, -1, relu_activated_map.size(2))
+            relu_activated_map_min = relu_activated_map_min.unsqueeze(-1)
+            relu_activated_map_min = relu_activated_map_min.expand(-1, -1, -1, relu_activated_map.size(3))
+            # 获取最大值
+            relu_activated_map_max = torch.max(torch.max(relu_activated_map.clone().detach(), dim=3).values, dim=2).values
+            relu_activated_map_max = relu_activated_map_max.unsqueeze(-1)
+            relu_activated_map_max = relu_activated_map_max.expand(-1, -1, relu_activated_map.size(2))
+            relu_activated_map_max = relu_activated_map_max.unsqueeze(-1)
+            relu_activated_map_max = relu_activated_map_max.expand(-1, -1, -1, relu_activated_map.size(3))
+
+            # 归一化 Grad-CAM
+            grad_cam = (relu_activated_map - relu_activated_map_min) / (relu_activated_map_max - relu_activated_map_min)
             # save_image(grad_cam[0,:,:,:].unsqueeze(0).cpu().detach(), 'TotalImg_120.png')
-            cam_ori = aa
-            cam_ori_norm = grad_cam
+
+            # 获取原始 CAM 和归一化后的 CAM
+            cam_origin = origin_cam
+            cam_origin_normalization = grad_cam
+            # Normalization
+            # 定义变换
             transform = transforms.Compose([transforms.Resize(size=(self.ori_shape[1], self.ori_shape[0]))])
+
+            # 缩放 Grad-CAM
             grad_cam_resize = transform(grad_cam)
 
-            num = int(img_ensemble.shape[0] / BS)  #
+            # 计算每个批次的数量
+            num = int(img_ensemble.shape[0] / batch_size)
 
             # ----------------inverse transformation on the attention-------------------#
-            # print(f"After randomAffine1 shape: {img_randomAffine1.shape}")
-            # print(f"After randomAffineScale1 shape: {img_randomAffineScale1.shape}")
-            #
-            # print(f"After randomAffine1 shape: {img_randomAffine2.shape}")
-            # print(f"After randomAffineScale1 shape: {img_randomAffineScale2.shape}")
-            #
-            # print(f"After randomAffine1 shape: {img_randomAffine3.shape}")
-            # print(f"After randomAffineScale1 shape: {img_randomAffineScale3.shape}")
 
-            # mask0, mask1, mask2 在循环外部定义
+            # 初始化掩码 mask0, mask1, mask2 在循环外部定义
             mask0 = None
             mask1 = None
             mask2 = None
-            for ss in range(num):
-                mask_tmp = grad_cam_resize[BS * ss:BS * (ss + 1)]
-                if ss == 0:  #
+            # 循环处理每个批次
+            for j in range(num):
+                mask_tmp = grad_cam_resize[batch_size * j:batch_size * (j + 1)]
+                if j == 0:  #
                     # mask0=mask_tmp
-                    mask_tmp1, _, _ = inv_randomScale_b1(mask_tmp)
-                    mask_tmp2, _, _ = inv_randomAffine_b1(mask_tmp1)
+                    mask_tmp1, _, _ = inverse_randomScale1(mask_tmp)
+                    mask_tmp2, _, _ = inverse_randomAffine1(mask_tmp1)
                     mask0 = mask_tmp2
-                elif ss == 1:
-                    mask_tmp1, _, _ = inv_randomScale_b2(mask_tmp)
-                    mask_tmp2, _, _ = inv_randomAffine_b2(mask_tmp1)
+                elif j == 1:
+                    mask_tmp1, _, _ = inverse_randomScale2(mask_tmp)
+                    mask_tmp2, _, _ = inverse_randomAffine2(mask_tmp1)
                     mask1 = Hflip(mask_tmp2)
 
-                elif ss == 2:
-                    mask_tmp1, _, _ = inv_randomScale_b3(mask_tmp)
-                    mask_tmp2, _, _ = inv_randomAffine_b3(mask_tmp1)
+                elif j == 2:
+                    mask_tmp1, _, _ = inverse_randomScale3(mask_tmp)
+                    mask_tmp2, _, _ = inverse_randomAffine3(mask_tmp1)
                     mask2 = mask_tmp2
 
                 # elif ss==3:
@@ -242,9 +267,10 @@ class Attention(object):
 
                 else:
                     raise ValueError("Error.")
-
+            # 初始化融合后的 Grad-CAM
             grad_cam_resize_ensem = None
-            for ll in range(BS):
+            # 融合每个批次的结果
+            for ll in range(batch_size):
                 final_scores = 1. / num
                 grad_cam_resize_ensem_tmp = \
                     mask0[ll].unsqueeze(0) * final_scores + \
@@ -255,17 +281,32 @@ class Attention(object):
                     grad_cam_resize_ensem = grad_cam_resize_ensem_tmp
                 else:
                     grad_cam_resize_ensem = torch.cat((grad_cam_resize_ensem, grad_cam_resize_ensem_tmp), dim=0)
+            # 添加到列表
             grad_cam_resize_list.append(grad_cam_resize_ensem)
-            cam_ori_list.append(cam_ori[:BS])
-            cam_ori_norm_list.append(cam_ori_norm[:BS])
+            cam_origin_list.append(cam_origin[:batch_size])
+            cam_origin_normalization_list.append(cam_origin_normalization[:batch_size])
 
+        # 获取最后一个 Grad-CAM 的热力图
         mm = grad_cam_resize_list[1][-1, 0, :, :].cpu().detach()
         nn = np.uint8(mm * 255)
         heatmap = cv2.applyColorMap(nn, cv2.COLORMAP_JET)
-
+        
+        # 获取输入图像
         test_img = inputs['image'].clone()[-1, :, :, :].cpu().detach()
-        # [0,1]->[0,255]，CHW->HWC，->cv2
+        
+        # 将图像转换为 CV2 格式  [0,1]->[0,255]，CHW->HWC，->cv2
         test_img = test_img.mul_(255).add_(0.5).clamp_(0, 255).permute(1, 2, 0).type(torch.uint8).numpy()
+        
+        # 合成图像
         superimposed_img = heatmap * 0.6 + test_img * 0.4
+        
+        # 保存图像
         cv2.imwrite('./attention_map_sample.jpg', superimposed_img)  # layer5
-        return grad_cam_resize_list, cam_ori_list, cam_ori_norm_list
+        
+        # 返回结果
+        # grad_cam_resize_list：包含经过逆变换和归一化后的Grad-CAM特征图。它是通过对网络中不同层次的梯度进行处理后得到的，表示网络对输入图像不同区域的关注程度。
+        # 这个列表中的每一项都是一个经过特定尺寸调整后的Grad-CAM特征图，经过反向仿射变换后，恢复到输入图像的原始尺度。
+
+        # cam_origin_list：包含原始的 Grad CAM特征图，即在反向仿射变换和归一化之前的类激活映射。这些特征图用于表示网络某层特征对预测结果的贡献。.
+        # cam_origin_normalization_list：包含归一化后的Grad-CAM特征图，归一化的目的是将特征图的值范围调整到[0, 1]，方便进行可视化或进一步处理。
+        return grad_cam_resize_list, cam_origin_list, cam_origin_normalization_list

@@ -186,9 +186,7 @@ class MyDataset(Dataset):
         new_car[:, :, :, 0] = F.pad(imgs_pred[:, :, :, 0], location, "constant", value=0)
         new_car[:, :, :, 1] = F.pad(imgs_pred[:, :, :, 1], location, "constant", value=0)
         new_car[:, :, :, 2] = F.pad(imgs_pred[:, :, :, 2], location, "constant", value=0)
-        # print(f"new_contour == 0.: {new_contour == 0.}")
-        # print(f"img.permute(0, 2, 3, 1).float().shape: {img.permute(0, 2, 3, 1).float().shape}")
-        # print(f"new_car.float().shape: {new_car.float().shape}")
+
         # 创建对抗样本图像，将掩码为 0 的区域填充为原始图像，掩码为 1 的区域填充为渲染图像
         total_img = torch.where((new_contour == 0.), img.permute(0, 2, 3, 1), new_car)
 
@@ -199,35 +197,35 @@ class MyDataset(Dataset):
         return len(self.files)
 
 
-def initialize_patch(mesh, device, texture_atlas_size):
-    # 打印 'Initializing patch...' 字符串，表示正在初始化面片
-    print('Initializing patch...')
-
-    # 初始化一个空列表 sampled_planes，用于存储采样的平面
-    sampled_planes = list()
-
-    # 打开名为 'top_faces_QZH.txt' 的文本文件，读取其中的每一行
-    with open(r'top_faces_QZH.txt', 'r') as f:
-
-        # 读取文件中的每一行，将其作为 face_id
-        face_ids = f.readlines()
-
-        # 遍历 face_ids 列表中的每个 face_id
-        for face_id in face_ids:
-
-            # 如果 face_id 不是空行
-            if face_id != '\n':
-                # 将 face_id 转换为整数，并添加到 sampled_planes 列表中
-                sampled_planes.append(int(face_id))
-
-    # 使用 sampled_planes 列表创建一个 PyTorch 张量 idx，数据类型为 long，并移动到指定设备上
-    idx = torch.Tensor(sampled_planes).long().to(device)
-
-    # 创建一个形状为 (len(sampled_planes), texture_atlas_size, texture_atlas_size, 3) 的随机张量 patch
-    # 其中 len(sampled_planes) 表示采样平面的数量，texture_atlas_size 表示纹理图谱的大小，3 表示颜色通道
-    # 将 patch 张量移动到指定设备上，并设置 requires_grad=True，表示这个张量需要计算梯度，以便于后续的优化
-    patch = torch.rand(len(sampled_planes), texture_atlas_size, texture_atlas_size, 3, device=device,
-                       requires_grad=True)
-
-    # 返回初始化后的面片 patch 和索引 idx
-    return patch, idx
+# def initialize_patch(mesh, device, texture_atlas_size):
+#     # 打印 'Initializing patch...' 字符串，表示正在初始化面片
+#     print('Initializing patch...')
+#
+#     # 初始化一个空列表 sampled_planes，用于存储采样的平面
+#     sampled_planes = list()
+#
+#     # 打开名为 'top_faces_QZH.txt' 的文本文件，读取其中的每一行
+#     with open(r'top_faces.txt', 'r') as f:
+#
+#         # 读取文件中的每一行，将其作为 face_id
+#         face_ids = f.readlines()
+#
+#         # 遍历 face_ids 列表中的每个 face_id
+#         for face_id in face_ids:
+#
+#             # 如果 face_id 不是空行
+#             if face_id != '\n':
+#                 # 将 face_id 转换为整数，并添加到 sampled_planes 列表中
+#                 sampled_planes.append(int(face_id))
+#
+#     # 使用 sampled_planes 列表创建一个 PyTorch 张量 idx，数据类型为 long，并移动到指定设备上
+#     idx = torch.Tensor(sampled_planes).long().to(device)
+#
+#     # 创建一个形状为 (len(sampled_planes), texture_atlas_size, texture_atlas_size, 3) 的随机张量 patch
+#     # 其中 len(sampled_planes) 表示采样平面的数量，texture_atlas_size 表示纹理图谱的大小，3 表示颜色通道
+#     # 将 patch 张量移动到指定设备上，并设置 requires_grad=True，表示这个张量需要计算梯度，以便于后续的优化
+#     patch = torch.rand(len(sampled_planes), texture_atlas_size, texture_atlas_size, 3, device=device,
+#                        requires_grad=True)
+#
+#     # 返回初始化后的面片 patch 和索引 idx
+#     return patch, idx

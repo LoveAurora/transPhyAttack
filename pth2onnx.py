@@ -1,5 +1,5 @@
 import time
-
+from PIL import Image
 import torch.nn as nn
 import colorsys
 import torchvision
@@ -11,9 +11,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.ticker import NullLocator
 # 假设这些模块已经在YoloV3库中定义好
-from YoloV3.nets.yolo3 import YoloBody  # 网络主体
+from YoloV3.nets.yolov3 import YoloBody  # 网络主体
 from YoloV3.utils.utils import DecodeBox  # 解码器
-from YoloV3 import attention  # 注意力机制模块
 
 
 def rescale_boxes(boxes, current_dim, original_shape):
@@ -201,12 +200,6 @@ class YOLO(nn.Module):
         self._setup_device()
         self._prepare_decodes()
         self._prepare_colors()
-        self.multi_attention = attention.Attention(self.net, ori_shape=self.model_image_size,
-                                                   final_shape=self.model_image_size,
-                                                   yolo_decodes=self.yolo_decodes,
-                                                   num_classes=self.num_classes,
-                                                   conf_thres=self.confidence,
-                                                   nms_thres=self.iou)
 
     def _initialize_weights(self):
         # 初始化模型权重
