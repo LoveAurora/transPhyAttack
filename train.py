@@ -91,7 +91,7 @@ class Patch:
                     # 调整图像维度顺序
                     total_img = total_img.permute(0, 3, 1, 2)  # [N H W C]->[N C H W]
                     # 获取网络输出
-                    output = self.dnet.get_output(total_img)
+                    # output = self.dnet.get_output(total_img)
 
                     # -----------------------------averaged multi-scale attention map---------------------#
                     # 注册hook以获取多尺度注意力图
@@ -163,7 +163,8 @@ class Patch:
 
                     dataset.set_mesh(mesh)
 
-                    del output, total_img, texture_img, contour, nps, loss, tv_loss, attention_list
+                    # del output, total_img, texture_img, contour, nps, loss, tv_loss, attention_list
+                    del total_img, texture_img, contour, nps, loss, tv_loss, attention_list
                     torch.cuda.empty_cache()
 
             patch_save = self.patch.cpu().detach().clone()

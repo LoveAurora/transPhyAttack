@@ -13,6 +13,7 @@ from matplotlib.ticker import NullLocator
 # 假设这些模块已经在YoloV3库中定义好
 from YoloV3.nets.yolov3 import YoloBody  # 网络主体
 from YoloV3.utils.utils import DecodeBox  # 解码器
+from YoloV3 import attention  # 注意力机制模块
 
 
 def rescale_boxes(boxes, current_dim, original_shape):
@@ -135,6 +136,7 @@ def draw_and_save_output_image(image_path, detections, img_size, output_path, cl
     :type classes: [str]
     """
     # Create plot
+    # Create plot
     img = np.array(Image.open(image_path))
     plt.figure()
     fig, ax = plt.subplots(1)
@@ -171,8 +173,7 @@ def draw_and_save_output_image(image_path, detections, img_size, output_path, cl
     plt.axis("off")
     plt.gca().xaxis.set_major_locator(NullLocator())
     plt.gca().yaxis.set_major_locator(NullLocator())
-    filename = os.path.basename(image_path).split(".")[0]
-    output_path = os.path.join(output_path, f"{filename}.png")
+    output_path = os.path.join(output_path, os.path.basename(image_path))  # Use original filename
     plt.savefig(output_path, bbox_inches="tight", pad_inches=0.0)
     plt.close()
 
@@ -195,20 +196,10 @@ class YOLO(nn.Module):
         self.num_classes = len(self.class_names)
         self.net = YoloBody(self.anchors, self.num_classes)
 
-        self._initialize_weights()
         self._load_model_weights()
         self._setup_device()
         self._prepare_decodes()
         self._prepare_colors()
-
-    def _initialize_weights(self):
-        # 初始化模型权重
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
 
     def _load_model_weights(self):
         # 加载预训练的模型权重
@@ -261,18 +252,6 @@ class YOLO(nn.Module):
         return output
 
 
-# 将模型转换为 ONNX 格式
-def convert_to_onnx(model, config, onnx_file_path):
-    model.eval()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    dummy_input = torch.randn(1, 3, config["model_image_size"][0], config["model_image_size"][1],
-                              requires_grad=True).to(device)
-    model = model.to(device)
-    torch.onnx.export(model, dummy_input, onnx_file_path, verbose=True, opset_version=13, input_names=['input'],
-                      output_names=['output_images'])
-    print(f"Model has been converted to {onnx_file_path}")
-
-
 # 示例使用
 config = {
     "model_path": r'',  # YoloV3\checkpoint\Epoch300-Total_Loss1.9337-Val_Loss1.9373.pth
@@ -287,4 +266,84 @@ config = {
 }
 
 yolo_model = YOLO(config)
-convert_to_onnx(yolo_model, config, "yolov3.onnx")
+
+# 文件夹路径
+
+configs = {
+    'normal': {
+        # 'input_folder': './img_normal',
+        'input_folder': './bmw_normal',
+        # 'output_folder': 'output_images_pth',
+        'output_folder': './bmw_normal_output_images_pth',
+    },
+    'patch': {
+        # 'input_folder': './img_patch',
+        'input_folder': './bmw_patch',
+        # 'output_folder': 'output_images_pth',
+        'output_folder': './bmw_patch_output_images_pth',
+    }
+}
+# 改这个变量名字切换不同的配置
+config_key = 'patch'
+total_imgs = len(os.listdir(configs[config_key]['input_folder']))
+not_detected_imgs_filename = list()
+detected_imgs = 0
+
+
+def preprocess_image(imgs_path, input_size):
+    # 打开图片并进行预处理
+    img = Image.open(imgs_path).convert('RGB')
+    transform = torchvision.transforms.Compose([
+        torchvision.transforms.Resize(input_size),
+        torchvision.transforms.ToTensor()
+    ])
+    img_tensor = transform(img).unsqueeze(0).cuda()
+    return img_tensor
+
+
+def process_image(imgs_path):
+    input_size = (608, 608)
+    img_tensor = preprocess_image(imgs_path, input_size)
+
+    output = yolo_model(img_tensor)
+    nms_output = non_max_suppression(output, conf_thres=0.25, iou_thres=0.45, classes=None)
+    if len(nms_output[0]) > 0:
+        global detected_imgs
+        detected_imgs += 1
+    # 提取未被检测到的图片的文件名
+    # else:
+    #     global not_detected_imgs_filename
+    #     not_detected_imgs_filename.append(imgs_path)
+    # print(f"Found {len(nms_output[0])} objects in {imgs_path}")
+    # print(f"Found {len(nms_output[0])} objects in {imgs_path}")
+    # 保存图片
+    draw_and_save_output_image(imgs_path, nms_output[0], 608, "output_images_pth", ['car'])
+    draw_and_save_output_image(imgs_path, nms_output[0], 608, configs[config_key]['output_folder'], ['car'])
+    plt.close('all')  # 关闭所有图形以释放内存
+
+
+# 如果输出文件夹不存在，则创建它
+if not os.path.exists(configs[config_key]['output_folder']):
+    os.makedirs(configs[config_key]['output_folder'])
+
+# 遍历文件夹中的所有图片文件
+for filename in os.listdir(configs[config_key]['input_folder']):
+    if filename.endswith('.jpg') or filename.endswith('.png'):
+        img_path = os.path.join(configs[config_key]['input_folder'], filename)
+        process_image(img_path)
+        print(f"Processed {img_path}")
+
+# 打开一个文件进行写入（如果文件不存在则创建）
+# 把没有被检测到的图片的文件名写入文件
+# with open('detected_images_patch_pth.txt', 'w') as file:
+#     for filename in not_detected_imgs_filename:
+#         # 写入文件名，并在每个文件名后添加换行符
+#         file.write(filename + '\n')
+
+success_rate = 0
+if config_key == 'normal':
+    success_rate = detected_imgs / total_imgs
+elif config_key == 'patch':
+    success_rate = 1 - detected_imgs / total_imgs
+
+print(f"Success rate {success_rate} ")

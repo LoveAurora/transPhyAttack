@@ -53,7 +53,7 @@ def find_and_remove_unmatched_images(folder_path):
 
 
 # 指定文件夹路径
-folder_path = './output_images_pth'
+folder_path = '../output_images_pth'
 
 # 执行查找和删除操作
 find_and_remove_unmatched_images(folder_path)

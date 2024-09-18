@@ -20,7 +20,7 @@
 import numpy as np
 
 # 假设你的.npz文件名为'data.npz'
-file_name = 'dataset/testset/Town10HD_Opt_P27_cam_dis10_x0.0y0.0z10.0p-90.0y180.0r0.0veh_yaw0.0.npz'
+file_name = '../dataset/testset/Town10HD_Opt_P27_cam_dis10_x0.0y0.0z10.0p-90.0y180.0r0.0veh_yaw0.0.npz'
 
 # 加载.npz文件
 with np.load(file_name) as data:

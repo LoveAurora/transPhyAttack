@@ -47,3 +47,4 @@ def process_npz_files(input_folder, output_folder):
 input_folder = './dataset/testset'  # 替换为包含 .npz 文件的文件夹路径
 output_folder = './img_normal'  # 替换为保存图像的文件夹路径
 process_npz_files(input_folder, output_folder)
+
